@@ -108,7 +108,66 @@ footer {
 	}
     }
 
-  function init() {
+   var digit = {
+       vertsBuffer : -1,
+       elementsBuffer : -1,
+       elementOffset : [0, 8, 10, 20, 28, 36, 46, 56, 60, 70],
+       elementCount : [8, 2, 10, 8, 8, 10, 10, 4, 10, 10],
+       loadVBOs : function() {
+	   var verts = new Float32Array([-5/16, 1, 0, 1, 5/16, 1,
+					 -5/16, 0, 0, 0, 5/16, 0,
+					 -5/16,-1, 0,-1, 5/16,-1]);
+	   this.vertsBuffer = gl.createBuffer();
+           gl.bindBuffer(gl.ARRAY_BUFFER, this.vertsBuffer);
+           gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+	   var elements = new Uint8Array([0,2, 2,8, 8,6, 6,0,       // 0, offset=0,  n=8
+					  1,7,                      // 1, offset=8,  n=2
+					  0,2, 2,5, 5,3, 3,6, 6,8,  // 2, offset=10, n=10
+					  0,2, 2,8, 8,6, 5,3,       // 3, offset=20, n=8
+					  0,3, 3,5, 5,2, 5,8,       // 4, offset=28, n=8
+					  2,0, 0,3, 3,5, 5,8, 8,6,  // 5, offset=36, n=10
+					  2,0, 0,6, 6,8, 8,5, 5,3,  // 6, offset=46, n=10
+					  0,2, 2,8,                 // 7, offset=56, n=4
+					  0,2, 2,8, 8,6, 6,0, 3,5,  // 8, offset=60, n=10
+					  6,8, 8,2, 2,0, 0,3, 3,5]);// 9, offset=70, n=10
+	   this.elementsBuffer = gl.createBuffer();
+	   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementsBuffer);
+           gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, elements, gl.STATIC_DRAW);
+       },
+       draw : function(d) {
+	   if (this.vertsBuffer < 0)
+	       this.loadVBOs();
+           gl.bindBuffer(gl.ARRAY_BUFFER, this.vertsBuffer);
+           gl.enableVertexAttribArray(program.vertexPosition);
+           gl.vertexAttribPointer(program.vertexPosition,
+                                  2, gl.FLOAT, false, 0, 0);
+	   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementsBuffer);
+           gl.drawArrays(gl.LINES, this.elementOffset[d], this.elementCount[d]);
+       },
+       drawNumber : function(x, y, num) {	
+	   gl.matrixStack.push(gl.ModelView);
+	   if (num < 10) {  // single digit
+	       gl.ModelView.translate(x, y, 0);
+	       this.draw(num);
+	   } else {
+	       var v = num, len = 1;   // count digits
+	       while (v >= 10) {
+		   v = Math.floor(v / 10);
+		   len++;
+	       }
+	       gl.ModelView.translate(x + (len-1)/2, y, 0);  // draw number backwards
+	       while (num > 0) {
+		   var d = num % 10;
+		   this.draw(d);
+		   num = Math.floor(num / 10);
+		   gl.ModelView.translate(-1, 0, 0);
+	       }
+	   }
+	   gl.matrixStack.pop(gl.ModelView);
+       }
+   }
+
+   function init() {
       canvas = document.getElementById("bstcanvas");
       gl = null;
       try {
@@ -183,6 +242,7 @@ footer {
   }
 
   function drawTree(tree) {
+      // XXXX digit.drawNumber(tree.x, tree.y, tree.key);
       circle.draw(tree.x, tree.y, nodeRadius);
       if (tree.left != null) {
 	  edge(tree.x, tree.y, tree.left.x, tree.left.y);
@@ -208,11 +268,6 @@ footer {
 					 treeExtent.miny + size + boundary, 
 					 treeExtent.miny - boundary, 
 					 -1, 1);
-	  /* XXX
-	  gl.Projection.identity().ortho(treeExtent.minx, treeExtent.maxx,
-					 treeExtent.maxy, treeExtent.miny,
-					 -1, 1);
-	  */
 	  gl.ModelView.identity();
       }
       
