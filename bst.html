@@ -234,7 +234,7 @@ footer {
       	  tree = insert(tree, keys[i]);
        */
        var keys = [];
-       for (var i = 0; i < 30; i++)
+       for (var i = 0; i < 40; i++)
 	   keys.push(i);
        for (var i = 0; i < keys.length; i++) {
 	   var j = Math.floor(Math.random()*keys.length);
@@ -278,17 +278,26 @@ footer {
       if (treeModified) {
 	  treeExtent = setNodePositions(tree);
 	  treeModified = false;
-	  var dx = treeExtent.maxx - treeExtent.minx;
-	  var dy = treeExtent.maxy - treeExtent.miny;
-	  var size = (dx > dy) ? dx : dy;
+	  var aspect = canvas.width / canvas.height;
+	  var dx = treeExtent.maxx - treeExtent.minx + 2*boundary;
+	  var dy = treeExtent.maxy - treeExtent.miny + 2*boundary;
+	  if (dx < 16) dx = 16;
+	  if (dy < 4) dy = 4;
+	  gl.viewrect = {width : dx, height : dx/aspect};
+	  if (gl.viewrect.height < dy) {
+	      gl.viewrect.height = dy;
+	      gl.viewrect.width = aspect*dy;
+	  }
+	  gl.viewrect.x0 = treeExtent.minx - boundary;
+	  gl.viewrect.y0 = treeExtent.miny - boundary;
+	  gl.viewrect.x1 = gl.viewrect.x0 + gl.viewrect.width;
+	  gl.viewrect.y1 = gl.viewrect.y0 + gl.viewrect.height;
 	  //
-	  // positive y-axis proceeds downard
+	  // Origin in upper left. Positive y-axis points downward.
 	  //
-	  gl.Projection.identity().ortho(treeExtent.minx - boundary, 
-					 treeExtent.minx + size + boundary,
-					 treeExtent.miny + size + boundary, 
-					 treeExtent.miny - boundary, 
-					 -1, 1);
+	  gl.Projection.identity().ortho(gl.viewrect.x0, gl.viewrect.x1,
+					 gl.viewrect.y1, gl.viewrect.y0,
+					-1, 1);
 	  gl.ModelView.identity();
       }
       
@@ -304,7 +313,7 @@ footer {
 
 <h1>BST</h1>
 
-<canvas id="bstcanvas" width="600" height="600"></canvas><br />
+<canvas id="bstcanvas" width="1000" height="600"></canvas><br />
 
 <footer>
   Wayne O. Cochran<br />
