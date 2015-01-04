@@ -108,15 +108,15 @@ footer {
 	}
     }
 
-   var digit = {
+   var digit = {  // positive y-axis is down
        vertsBuffer : -1,
        elementsBuffer : -1,
        elementOffset : [0, 8, 10, 20, 28, 36, 46, 56, 60, 70],
        elementCount : [8, 2, 10, 8, 8, 10, 10, 4, 10, 10],
        loadVBOs : function() {
-	   var verts = new Float32Array([-5/16, 1, 0, 1, 5/16, 1,
+	   var verts = new Float32Array([-5/16,-1, 0,-1, 5/16,-1,
 					 -5/16, 0, 0, 0, 5/16, 0,
-					 -5/16,-1, 0,-1, 5/16,-1]);
+					 -5/16,+1, 0,+1, 5/16,+1]);
 	   this.vertsBuffer = gl.createBuffer();
            gl.bindBuffer(gl.ARRAY_BUFFER, this.vertsBuffer);
            gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
@@ -142,12 +142,14 @@ footer {
            gl.vertexAttribPointer(program.vertexPosition,
                                   2, gl.FLOAT, false, 0, 0);
 	   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.elementsBuffer);
-           gl.drawArrays(gl.LINES, this.elementOffset[d], this.elementCount[d]);
+           gl.drawElements(gl.LINES, this.elementCount[d], gl.UNSIGNED_BYTE,
+			   this.elementOffset[d]);
        },
-       drawNumber : function(x, y, num) {	
+       drawNumber : function(x, y, height, num) {	
 	   gl.matrixStack.push(gl.ModelView);
 	   if (num < 10) {  // single digit
-	       gl.ModelView.translate(x, y, 0);
+	       gl.ModelView.translate(x, y, 0).scale(height, height, 1);
+               loadUniforms();
 	       this.draw(num);
 	   } else {
 	       var v = num, len = 1;   // count digits
@@ -155,12 +157,14 @@ footer {
 		   v = Math.floor(v / 10);
 		   len++;
 	       }
-	       gl.ModelView.translate(x + (len-1)/2, y, 0);  // draw number backwards
+	       gl.ModelView.translate(x, y, 0).scale(height, height, 1);
+	       gl.ModelView.translate((len-1)/2,0,0);
 	       while (num > 0) {
 		   var d = num % 10;
+		   loadUniforms();
 		   this.draw(d);
 		   num = Math.floor(num / 10);
-		   gl.ModelView.translate(-1, 0, 0);
+		   gl.ModelView.translate(-1,0,0);
 	       }
 	   }
 	   gl.matrixStack.pop(gl.ModelView);
@@ -221,16 +225,30 @@ footer {
       gl.lineWidth(2.0);
 
       tree = null;
-      var keys = [40, 10, 0, 20, 60, 50, 70];  // initial balanced tree
+       /* XXX
+      var keys = [40, 10, 0, 8, 20, 9, 60, 50, 70, 7];  // initial balanced tree
       for (var i = 0; i < keys.length; i++)
 	  tree = insert(tree, keys[i]);
-      keys = [10, 11, 50, 45, 22, 3, 52, 80, 0, 1, 2, 3];  // more keys
+      keys = [11, 50, 45, 22, 52, 80, 90, 91, 92, 1, 4, 2, 6, 3, 5, 99, 98];  // more keys
       for (var i = 0; i < keys.length; i++)
       	  tree = insert(tree, keys[i]);
+       */
+       var keys = [];
+       for (var i = 0; i < 30; i++)
+	   keys.push(i);
+       for (var i = 0; i < keys.length; i++) {
+	   var j = Math.floor(Math.random()*keys.length);
+	   var tmp = keys[i];
+	   keys[i] = keys[j];
+	   keys[j] = tmp;
+       }
+       for (var i = 0; i < keys.length; i++)
+	   tree = insert(tree, keys[i]);
       treeModified = true;
   }
 
-  var nodeRadius = 0.3;
+  var nodeRadius = 0.35;
+  var textHeight = 0.18;
   var boundary = 0.7;
 
   function edge(x0,y0, x1,y1) {
@@ -242,7 +260,7 @@ footer {
   }
 
   function drawTree(tree) {
-      // XXXX digit.drawNumber(tree.x, tree.y, tree.key);
+      digit.drawNumber(tree.x, tree.y, textHeight, tree.key);
       circle.draw(tree.x, tree.y, nodeRadius);
       if (tree.left != null) {
 	  edge(tree.x, tree.y, tree.left.x, tree.left.y);
@@ -263,6 +281,9 @@ footer {
 	  var dx = treeExtent.maxx - treeExtent.minx;
 	  var dy = treeExtent.maxy - treeExtent.miny;
 	  var size = (dx > dy) ? dx : dy;
+	  //
+	  // positive y-axis proceeds downard
+	  //
 	  gl.Projection.identity().ortho(treeExtent.minx - boundary, 
 					 treeExtent.minx + size + boundary,
 					 treeExtent.miny + size + boundary, 
@@ -287,7 +308,7 @@ footer {
 
 <footer>
   Wayne O. Cochran<br />
-  December 31, 2014
+  January 3, 2015
 </footer>
 
 </body>
