@@ -43,7 +43,48 @@ footer {
     var canvas, gl, program;
     var tree = null;
     var treeModified;
-    var treeExtent;
+    var viewrect = {};
+    var selectedNodes = [];
+    var frame = 0;  // requested frame
+
+    function getMousePos(canvas, event) {
+	var rect = canvas.getBoundingClientRect();
+	return {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top
+	};
+    }
+
+    function canvasToViewRect(pt) {
+	return {
+	    x: pt.x*viewrect.width/canvas.width + viewrect.x0,
+	    y: pt.y*viewrect.height/canvas.height + viewrect.y0
+	}
+    }
+
+    function mouseDown(event) {
+	// XXX var pos = getMousePos(canvas, event);
+    }
+
+    function mouseUp(event) {
+	var pos = getMousePos(canvas, event);
+	var vpos = canvasToViewRect(pos);
+	var node = findNode(tree, vpos);
+	if (node) {
+	    var index = selectedNodes.findIndex(
+		function(elem, i, a){
+		    return elem.key == node.key;
+		});
+	    if (index >= 0) {
+		selectedNodes.splice(index, 1);
+	    } else {
+		selectedNodes.push(node);
+	    }
+	    if (frame == 0) {
+		frame = requestAnimationFrame(display);
+	    }
+	}
+    }
 
     function loadUniforms() {
         var ModelViewProjection = gl.Projection.mult(gl.ModelView);
@@ -181,6 +222,11 @@ footer {
           alert("No WebGL -- bummer!");
           return false;
       }
+
+      canvas.addEventListener("mousedown", mouseDown, false);
+      // XXX canvas.addEventListener("mousemove", mouseMove, false);
+      document.body.addEventListener("mouseup", mouseUp, false);
+
       var v = document.getElementById("vertex").firstChild.nodeValue;
       var vs = gl.createShader(gl.VERTEX_SHADER);
       gl.shaderSource(vs,v);
@@ -259,44 +305,69 @@ footer {
 		       x1 - nodeRadius*u, y1 - nodeRadius*v);
   }
 
+  var selectedColor = [1, 0, 0];
+  var normalColor = [1, 1, 0];
+
   function drawTree(tree) {
+      var index = selectedNodes.findIndex(
+	  function(elem, i, a){
+	      return elem.key == tree.key;
+	  });
+      gl.objectColor = (index >= 0) ? selectedColor : normalColor;
       digit.drawNumber(tree.x, tree.y, textHeight, tree.key);
       circle.draw(tree.x, tree.y, nodeRadius);
       if (tree.left != null) {
+	  gl.objectColor = normalColor;
 	  edge(tree.x, tree.y, tree.left.x, tree.left.y);
 	  drawTree(tree.left);
       }
       if (tree.right != null) {
+	  gl.objectColor = normalColor;
 	  edge(tree.x, tree.y, tree.right.x, tree.right.y);
 	  drawTree(tree.right);
       }
   }
 
+  function findNode(tree, pt) {
+      if (tree == null)
+	  return null;
+      var dx = pt.x - tree.x;
+      var dy = pt.y - tree.y;
+      if (dx*dx + dy*dy <= nodeRadius*nodeRadius)
+	  return tree;
+      var node = findNode(tree.left, pt);
+      if (node) return node;
+      return findNode(tree.right, pt);
+  }
+
   function display() {
+      frame = 0;  // clear pending animation frame request
+
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
       if (treeModified) {
-	  treeExtent = setNodePositions(tree);
+	  var treeExtent = setNodePositions(tree);
 	  treeModified = false;
 	  var aspect = canvas.width / canvas.height;
 	  var dx = treeExtent.maxx - treeExtent.minx + 2*boundary;
 	  var dy = treeExtent.maxy - treeExtent.miny + 2*boundary;
 	  if (dx < 16) dx = 16;
 	  if (dy < 4) dy = 4;
-	  gl.viewrect = {width : dx, height : dx/aspect};
-	  if (gl.viewrect.height < dy) {
-	      gl.viewrect.height = dy;
-	      gl.viewrect.width = aspect*dy;
+	  viewrect.width = dx;
+	  viewrect.height = dx/aspect;
+	  if (viewrect.height < dy) {
+	      viewrect.height = dy;
+	      viewrect.width = aspect*dy;
 	  }
-	  gl.viewrect.x0 = treeExtent.minx - boundary;
-	  gl.viewrect.y0 = treeExtent.miny - boundary;
-	  gl.viewrect.x1 = gl.viewrect.x0 + gl.viewrect.width;
-	  gl.viewrect.y1 = gl.viewrect.y0 + gl.viewrect.height;
+	  viewrect.x0 = treeExtent.minx - boundary;
+	  viewrect.y0 = treeExtent.miny - boundary;
+	  viewrect.x1 = viewrect.x0 + viewrect.width;
+	  viewrect.y1 = viewrect.y0 + viewrect.height;
 	  //
 	  // Origin in upper left. Positive y-axis points downward.
 	  //
-	  gl.Projection.identity().ortho(gl.viewrect.x0, gl.viewrect.x1,
-					 gl.viewrect.y1, gl.viewrect.y0,
+	  gl.Projection.identity().ortho(viewrect.x0, viewrect.x1,
+					 viewrect.y1, viewrect.y0,
 					-1, 1);
 	  gl.ModelView.identity();
       }
