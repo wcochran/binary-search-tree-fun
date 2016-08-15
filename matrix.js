@@ -1,28 +1,41 @@
 //
 // Vector and Matrix routines for client side WebGL Math.
-// Author: Wayne O. Cochran wcochran@vancouver.wsu.edu
+// Author: Wayne O. Cochran wcochran@wsu.edu
 //
 
-function dot3(U, V) {
+function Vec(x, y, z, w) {
+    if (Array.isArray(x))
+        this.vals = x.slice(0);
+    else if (x instanceof Vec)
+        this.vals = x.vals.slice(0);
+    else
+        this.vals = [x || 0, y || 0, z || 0, w || 1];
+}
+
+Vec.prototype.dot3 = function(other) {
+    var U = this.vals;
+    var V = other.vals;
     return U[0]*V[0] + U[1]*V[1] + U[2]*V[2];
 }
 
-function cross3(U, V) {
-    var UxV = [];
-    UxV[0] = U[1]*V[2] - U[2]*V[1];
-    UxV[1] = U[2]*V[0] - U[0]*V[2];
-    UxV[2] = U[0]*V[1] - U[1]*V[0];
-    return UxV;
+Vec.prototype.cross3 = function(other) {
+    var U = this.vals;
+    var V = other.vals;
+    return new Vec3(
+        U[1]*V[2] - U[2]*V[1],
+        U[2]*V[0] - U[0]*V[2],
+        U[0]*V[1] - U[1]*V[0]);
 }
 
-function scale3(s, V) {
-    V[0] *= s; V[1] *= s; V[2] *= s; 
-    return V;
+Vec.prototype.scale3 = function(s) {
+    var V = this.vals;
+    V[0] *= s; V[1] *= s; V[2] *= s;
+    return this;
 }
 
-function norm3(V) {
-    var s = 1.0/Math.sqrt(dot3(V,V));
-    return scale3(s,V);
+Vec.prototype.norm3 = function() {
+    var s = 1.0/Math.sqrt(this.dot(this));
+    return this.scale(s);
 }
 
 //
@@ -64,9 +77,9 @@ Matrix4x4.prototype.set4x4 = function(a00, a01, a02, a03,
                                       a10, a11, a12, a13,
                                       a20, a21, a22, a23,
                                       a30, a31, a32, a33) {
-    this.setElem(0,0,a00); 
-    this.setElem(0,1,a01); 
-    this.setElem(0,2,a02); 
+    this.setElem(0,0,a00);
+    this.setElem(0,1,a01);
+    this.setElem(0,2,a02);
     this.setElem(0,3,a03);
     this.setElem(1,0,a10);
     this.setElem(1,1,a11);
@@ -91,7 +104,7 @@ Matrix4x4.prototype.set3x4 = function(a00, a01, a02, a03,
                 a20, a21, a22, a23,
                 0,   0,   0,   1);
     return this;
-}               
+}
 
 Matrix4x4.prototype.set3x3 = function(a00, a01, a02,
                                       a10, a11, a12,
@@ -101,7 +114,7 @@ Matrix4x4.prototype.set3x3 = function(a00, a01, a02,
                 a20, a21, a22, 0,
                 0,   0,   0,   1);
     return this;
-}               
+}
 
 Matrix4x4.prototype.mult = function(B) {
     var AB = new Matrix4x4;
@@ -124,7 +137,7 @@ Matrix4x4.prototype.transform = function(p) {
         var s = 0;
         for (var i = 0; i < 4; i++)
             s += this.elem(r,i)*p[i];
-	q[r] = s;
+        q[r] = s;
     }
     return q;
 }
@@ -156,7 +169,7 @@ Matrix4x4.prototype.scale = function(sx, sy, sz) {
 Matrix4x4.prototype.translate = function(dx, dy, dz) {
     T = new Matrix4x4;
     T.set3x4(1, 0, 0, dx,
-             0, 1, 0, dy, 
+             0, 1, 0, dy,
              0, 0, 1, dz);
     return this.concat(T);
 }
@@ -198,16 +211,15 @@ Matrix4x4.prototype.rotate = function(angle_degrees, x, y, z) {
 Matrix4x4.prototype.lookat = function(eyex, eyey, eyez,
                                       centerx, centery, centerz,
                                       upx, upy, upz) {
-    var F = [centerx - eyex, centery - eyey, centerz - eyez];
-    norm3(F);
-    var U = [upx, upy, upz];
-    var S = cross3(F,U);
-    norm3(S);
-    U = cross3(S,F);
+    var F = (new Vec(centerx - eyex, centery - eyey, centerz - eyez)).normalize();
+    var U = new Vec(upx, upy, upz);
+    var S = F.cross3(U).norm3();
+    U = S.cross3(F);
     var R = new Matrix4x4;
-    R.set3x3( S[0],  S[1],  S[2],
-              U[0],  U[1],  U[2],
-             -F[0], -F[1], -F[2]);
+    R.set3x3(
+         S[0],  S[1],  S[2],
+         U[0],  U[1],  U[2],
+        -F[0], -F[1], -F[2]);
     this.concat(R);
     return this.translate(-eyex, -eyey, -eyez);
 }
@@ -215,16 +227,14 @@ Matrix4x4.prototype.lookat = function(eyex, eyey, eyez,
 Matrix4x4.prototype.inverseLookat = function(eyex, eyey, eyez,
 					     centerx, centery, centerz,
 					     upx, upy, upz) {
-    var F = [centerx - eyex, centery - eyey, centerz - eyez];
-    norm3(F);
-    var U = [upx, upy, upz];
-    var S = cross3(F,U);
-    norm3(S);
-    U = cross3(S,F);
+    var F = (new Vec(centerx - eyex, centery - eyey, centerz - eyez)).normalize();
+    var U = new Vec(upx, upy, upz);
+    var S = F.cross3(U).normal3();
+    U = S.cross3(F);
     var R = new Matrix4x4;
     R.set3x3( S[0],  U[0],  -F[0],
-              S[1],  U[1],  -F[1],
-              S[2],  U[2],  -F[2]);
+        S[1],  U[1],  -F[1],
+        S[2],  U[2],  -F[2]);
     this.translate(eyex, eyey, eyez);
     return this.concat(R);
 }
@@ -276,13 +286,13 @@ Matrix4x4.prototype.perspective = function(fovy_degrees, aspect, zNear, zFar) {
 // Normal Transformation
 // Used to transform surface normals.
 // Computes inverse-transpose of upper 3x3 of M.
-// Returns array of 9 values representing 3x3 matrix 
+// Returns array of 9 values representing 3x3 matrix
 // stored in column-major order.
 //   XXX place GLSL set uniform example here
 //
 Matrix4x4.prototype.normal = function() {
     var M = this;
-    var determinant =    
+    var determinant =
         +M.elem(0,0)*(M.elem(1,1)*M.elem(2,2) - M.elem(2,1)*M.elem(1,2))
         -M.elem(0,1)*(M.elem(1,0)*M.elem(2,2) - M.elem(1,2)*M.elem(2,0))
         +M.elem(0,2)*(M.elem(1,0)*M.elem(2,1) - M.elem(1,1)*M.elem(2,0));
@@ -304,7 +314,7 @@ Matrix4x4.prototype.normal = function() {
 //
 // Reflection Transformation.
 // M <-- M * Reflect
-//   reflection plane Ax + By + Cd + Z = 0 
+//   reflection plane Ax + By + Cd + Z = 0
 //
 Matrix4x4.prototype.reflect = function(plane) {
     var R = new Matrix3x3;
@@ -328,29 +338,29 @@ Matrix4x4.prototype.shadow = function(light, plane) {
     var dot =
         plane[0]*light[0] + plane[1]*light[1] +
         plane[2]*light[2] + plane[3]*light[3];
-    
+
     var S = new Matrix4x4();
-    
+
     S.setElem(0,0,dot - light[0]*plane[0]);
     S.setElem(0,1,    - light[0]*plane[1]);
     S.setElem(0,2,    - light[0]*plane[2]);
     S.setElem(0,3,    - light[0]*plane[3]);
-        
+
     S.setElem(1,0,    - light[1]*plane[0]);
     S.setElem(1,1,dot - light[1]*plane[1]);
     S.setElem(1,2,    - light[1]*plane[2]);
     S.setElem(1,3,    - light[1]*plane[3]);
-    
+
     S.setElem(2,0,    - light[2]*plane[0]);
     S.setElem(2,1,    - light[2]*plane[1]);
     S.setElem(2,2,dot - light[2]*plane[2]);
     S.setElem(2,3,    - light[2]*plane[3]);
-        
+
     S.setElem(3,0,    - light[3]*plane[0]);
     S.setElem(3,1,    - light[3]*plane[1]);
     S.setElem(3,2,    - light[3]*plane[2]);
     S.setElem(3,3,dot - light[3]*plane[3]);
-    
+
     return this.concat(S);
 }
 
@@ -368,7 +378,7 @@ Matrix4x4Stack.prototype.push = function(M) {
 }
 
 Matrix4x4Stack.prototype.pop = function(M) {
-    var C = this.stack.pop();  
+    var C = this.stack.pop();
     M.copy(C);
 }
 
