@@ -15,7 +15,7 @@ function insert(tree, key) {
 	    tree.right = insert(tree.right, key);
     }
     return tree;
-}
+}    
 
 function rotR(t) {
     var r = t.left;
