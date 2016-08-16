@@ -1,15 +1,16 @@
 var bstView = (function() {
-    var my = {};
+    var my = {};       // returned object holding module methods
 
-    var tree = null;   // BST
-    var treeModified;
+    var tree = null;   // Binary Search Tree (see setTree()) below)
+    var treeModified;  // true => recompute tree layout
 
     var canvas;
     var gl;
     var program;
-    var treeModified;
-    var viewrect = {};
+
+    var viewrect = {};   // 2D viewable region (set lazily in display())
     var selectedNodes = [];
+
     var frame = 0;  // requested frame
 
     function getMousePos(canvas, event) {
@@ -24,14 +25,45 @@ var bstView = (function() {
 	return {
 	    x: pt.x*viewrect.width/canvas.width + viewrect.x0,
 	    y: pt.y*viewrect.height/canvas.height + viewrect.y0
+	};
+    }
+
+    function viewRectToCanvas(pt) {
+	return {
+	    x : (pt.x - viewrect.x0)/canvas.width/viewrect.width,
+	    y : (pt.y - viewrect.y0)/canvas.height/viewrect.height
+	};
+    }
+
+    var draggingNode = null;
+
+    function mouseDown(event) {
+	var pos = getMousePos(canvas, event);
+	var vpos = canvasToViewRect(pos);
+	var node = findNode(tree, vpos);
+	if (node) {
+            draggingNode = node;
+        }
+    }
+
+    function mouseMove(event) {
+	if (draggingNode) {
+	    var pos = getMousePos(canvas, event);
+	    var vpos = canvasToViewRect(pos);
+	    draggingNode.x = vpos.x;
+	    draggingNode.y = vpos.y;
+	    if (frame == 0) {
+		frame = requestAnimationFrame(display);
+	    }
 	}
     }
 
-    function mouseDown(event) {
-	// XXX var pos = getMousePos(canvas, event);
-    }
-
     function mouseUp(event) {
+	if (draggingNode) {
+	    draggingNode = null;
+	    return;
+	}
+
 	var pos = getMousePos(canvas, event);
 	var vpos = canvasToViewRect(pos);
 	var node = findNode(tree, vpos);
@@ -55,14 +87,14 @@ var bstView = (function() {
         canvas = canvas_;
 	gl = null;
 	try {
-            gl = canvas.getContext("experimental-webgl");
+            gl = canvas.getContext("webgl");
 	} catch(e) {gl = null;}
 	if (gl == null) {
             return false;
 	}
 
 	canvas.addEventListener("mousedown", mouseDown, false);
-	// XXX canvas.addEventListener("mousemove", mouseMove, false);
+	canvas.addEventListener("mousemove", mouseMove, false);
 	document.body.addEventListener("mouseup", mouseUp, false);
 
 	var vertexShaderSource = 
@@ -118,18 +150,8 @@ var bstView = (function() {
 	return true;
     };
 
-    my.setRandomTree = function(size) {
-	var keys = [];
-	for (var i = 0; i < size; i++)
-	    keys.push(i);
-	for (var i = 0; i < keys.length; i++) {
-	    var j = Math.floor(Math.random()*keys.length);
-	    var tmp = keys[i];
-	    keys[i] = keys[j];
-	    keys[j] = tmp;
-	}
-	for (var i = 0; i < keys.length; i++)
-	    tree = insert(tree, keys[i]);
+    my.setTree = function(tree_) {
+	tree = tree_;
 	treeModified = true;
     }
 
