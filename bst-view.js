@@ -43,6 +43,7 @@ var bstView = (function() {
     var dragginfNodeOriginalPostion;
 
     function mouseDown(event) {
+	// console.log("event.detail : " + event.detail); // XXX  for double click
 	var pos = getMousePos(canvas, event);
 	var vpos = canvasToViewRect(pos);
 	var node = findNode(tree, vpos);
@@ -125,7 +126,8 @@ var bstView = (function() {
         canvas = canvas_;
 	gl = null;
 	try {
-            gl = canvas.getContext("webgl");
+            // XXX gl = canvas.getContext("webgl");
+            gl = WebGLDebugUtils.makeDebugContext(canvas.getContext("webgl"));
 	} catch(e) {gl = null;}
 	if (gl == null) {
             return false;
@@ -376,6 +378,68 @@ var bstView = (function() {
 	return findNode(tree.right, pt);
     }
 
+    var rightPointer = {
+	VBO : -1,
+	loadVBO : function() {
+	    var s = Math.sqrt(2)/2;
+	    var verts = new Float32Array([
+		    -s, -s,
+		    +1, 0,
+		    -s, +s]);
+	    this.VBO = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.VBO);
+            gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+	},
+	draw : function(x, y, xradius, yradius) {
+            if (this.VBO < 0)
+		this.loadVBO();
+	    gl.matrixStack.push(gl.ModelView);
+	    gl.ModelView.translate(x,y,0).scale(xradius, yradius, 1);
+            loadUniforms();
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.VBO);
+            gl.enableVertexAttribArray(program.vertexPosition);
+            gl.vertexAttribPointer(program.vertexPosition,
+                                   2, gl.FLOAT, false, 0, 0);
+            // XXX gl.drawArrays(gl.LINE_LOOP, 0, 3);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+	    gl.matrixStack.pop(gl.ModelView);
+	}
+    }
+
+    function KeySelector() {
+	this.key = 0;
+	this.x = this.y = 0;
+	this.oldx = this.oldy = 0;
+	this.forwardCenterX = 2*nodeRadius;
+	this.fastForwardCenterX = 4*nodeRadius;
+	this.reverseCenterX = -2*nodeRadius;
+	this.fastReverseCenterX = -4*nodeRadius;
+    }
+
+    KeySelector.prototype.setPosition = function(x, y) {
+	this.oldx = this.x; this.oldy = y;
+	this.x = x; this.y = y;
+    }
+
+    KeySelector.prototype.height = function() {
+	return 4*nodeRadius;
+    }
+
+    KeySelector.prototype.draw = function(timeFraction) {
+	gl.objectColor = normalColor;
+	var x = (timeFraction === undefined) ? this.x : lerp(timeFraction, this.oldx, this.x);
+	var y = (timeFraction === undefined) ? this.y : lerp(timeFraction, this.oldy, this.y);
+
+	digit.drawNumber(x, y, textHeight, this.key);
+	circle.draw(x, y, nodeRadius);
+
+	var s = 0.6;
+	rightPointer.draw(x + this.forwardCenterX, y, s*nodeRadius, s*nodeRadius);
+	rightPointer.draw(x + this.reverseCenterX, y, -s*nodeRadius, s*nodeRadius);  // scale < 0 -> flip left/right
+    }
+
+    var keySelector = new KeySelector();
+
     function display(timeStamp) {
 	frame = 0;  // clear pending animation frame request
 	
@@ -386,7 +450,7 @@ var bstView = (function() {
 	    treeModified = false;
 	    var aspect = canvas.width / canvas.height;
 	    var dx = treeExtent.maxx - treeExtent.minx + 2*boundary;
-	    var dy = treeExtent.maxy - treeExtent.miny + 2*boundary;
+	    var dy = treeExtent.maxy - treeExtent.miny + 3*boundary + keySelector.height();
 	    if (dx < 16) dx = 16;
 	    if (dy < 4) dy = 4;
 	    if (animating) {
@@ -408,6 +472,10 @@ var bstView = (function() {
 	    viewrect.y0 = treeExtent.miny - boundary;
 	    viewrect.x1 = viewrect.x0 + viewrect.width;
 	    viewrect.y1 = viewrect.y0 + viewrect.height;
+
+	    keySelector.setPosition(0.5*(viewrect.x0 + viewrect.x1), 
+				    viewrect.y1 - 0.5*keySelector.height()); 
+
 	    //
 	    // Origin in upper left. Positive y-axis points downward.
 	    //
@@ -433,6 +501,12 @@ var bstView = (function() {
 					       -1, 1);
 		gl.ModelView.identity();
 		drawTree(tree, animationFraction);
+		gl.Projection.identity().ortho(viewrect.x0, viewrect.x1,
+					       viewrect.y1, viewrect.y0,
+					       -1, 1);
+		gl.ModelView.identity();
+		/// XXX keySelector.draw(animationFraction);
+		keySelector.draw();
 		if (frame == 0)
 		    frame = requestAnimationFrame(display);
 	    } else {  // done animating
@@ -443,9 +517,11 @@ var bstView = (function() {
 					       -1, 1);
 		gl.ModelView.identity();
 		drawTree(tree);
+		keySelector.draw();
 	    }
 	} else {
 	    drawTree(tree);
+	    keySelector.draw();
 	}
 	
 	gl.flush();
