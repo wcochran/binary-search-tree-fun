@@ -36,6 +36,7 @@ var bstView = (function() {
     }
 
     var draggingNode = null;
+    var dragginfNodeOriginalPostion;
 
     function mouseDown(event) {
 	var pos = getMousePos(canvas, event);
@@ -43,6 +44,10 @@ var bstView = (function() {
 	var node = findNode(tree, vpos);
 	if (node) {
             draggingNode = node;
+	    draggingNodeOriginalPosition = {
+		x : node.x,
+		y : node.y
+	    };
         }
     }
 
@@ -60,10 +65,39 @@ var bstView = (function() {
 
     function mouseUp(event) {
 	if (draggingNode) {
+	    var pos = getMousePos(canvas, event);
+	    var vpos = canvasToViewRect(pos);
+	    var parentNode = findNode(tree, vpos);
+
+	    var rotated = false;
+	    if (parentNode) {
+		if (parentNode.left === draggingNode) {
+		    console.log("rotate right at " + parentNode.key);
+		    tree = rotateRight(tree, parentNode);
+		    rotated = true;
+		} else if (parentNode.right === draggingNode) {
+		    console.log("rotate left at " + parentNode.key);
+		    tree = rotateLeft(tree, parentNode);
+		    rotated = true;
+		}
+	    }
+	    
+	    if (rotated) {
+		// later : animate tree to new structure
+		treeModified = true;
+	    } else {
+		// later : animate node back to original position
+		draggingNode.x = draggingNodeOriginalPosition.x;
+		draggingNode.y = draggingNodeOriginalPosition.y;
+	    }
+	    if (frame == 0) {
+		frame = requestAnimationFrame(display);
+	    }
 	    draggingNode = null;
 	    return;
 	}
 
+	/* XXXX selecting a node
 	var pos = getMousePos(canvas, event);
 	var vpos = canvasToViewRect(pos);
 	var node = findNode(tree, vpos);
@@ -81,6 +115,7 @@ var bstView = (function() {
 		frame = requestAnimationFrame(display);
 	    }
 	}
+	*/
     }
 
     my.init = function(canvas_) {

@@ -31,6 +31,34 @@ function rotL(t) {
     return r;
 }
 
+//
+// root = root of tree in which rotation occurs (possible in deep subtree).
+// node = top node in rotation
+//
+function rotateRight(root, node) {
+    if (root === null)
+	return root; // shouldn't happen
+    if (root === node)
+	root = rotR(node);
+    else if (node.key < root.key)
+	root.left = rotateRight(root.left, node);
+    else 
+	root.right = rotateRight(root.right, node);
+    return root;
+}
+
+function rotateLeft(root, node) {
+    if (root === null)
+	return root; // shouldn't happen
+    if (root === node)
+	root = rotL(node);
+    else if (node.key < root.key)
+	root.left = rotateLeft(root.left, node);
+    else 
+	root.right = rotateLeft(root.right, node);
+    return root;
+}
+
 function height(tree) {
     if (tree == null)
 	return -1;
@@ -102,6 +130,14 @@ function setNodePositions(tree) {
 	}
     }
 
+    function zeroCoords(tree) { // XXX
+	if (tree) {
+	    tree.x = tree.y = tree.dx = 0;
+	    zeroCoords(tree.left);
+	    zeroCoords(tree.right);
+	}
+    }
+
     function assignCoordinates(tree, x, y, extent) {
 	if (tree != null) {
 	    tree.x = x + tree.dx;
@@ -114,6 +150,8 @@ function setNodePositions(tree) {
 	    assignCoordinates(tree.right, tree.x, y+1, extent);
 	}
     }
+
+    zeroCoords(tree);
 
     childOffsets(tree);
     var extent = {minx : 0, maxx : 1, miny : 0, maxy : height(tree)};
