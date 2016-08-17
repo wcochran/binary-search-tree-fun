@@ -9,9 +9,13 @@ var bstView = (function() {
     var program;
 
     var viewrect = {};   // 2D viewable region (set lazily in display())
+    var oldViewrect = null;  // old viewable region (for animation)
     var selectedNodes = [];
 
-    var frame = 0;  // requested frame
+    var frame = 0;             // requested frame
+    var animating = false;     // currently animating?
+    var animationStart = null; // time stamp (milliseconds) of start of animation
+    var animationLength;       // length of animation (milliseconds)
 
     function getMousePos(canvas, event) {
 	var rect = canvas.getBoundingClientRect();
@@ -72,18 +76,17 @@ var bstView = (function() {
 	    var rotated = false;
 	    if (parentNode) {
 		if (parentNode.left === draggingNode) {
-		    console.log("rotate right at " + parentNode.key);
 		    tree = rotateRight(tree, parentNode);
 		    rotated = true;
 		} else if (parentNode.right === draggingNode) {
-		    console.log("rotate left at " + parentNode.key);
 		    tree = rotateLeft(tree, parentNode);
 		    rotated = true;
 		}
 	    }
 	    
 	    if (rotated) {
-		// later : animate tree to new structure
+		animating = true;
+		animationLength = 0.3*1000;
 		treeModified = true;
 	    } else {
 		// later : animate node back to original position
@@ -331,23 +334,33 @@ var bstView = (function() {
     var selectedColor = [1, 0, 0];
     var normalColor = [1, 1, 0];
 
-    function drawTree(tree) {
+    function lerp(t, a, b) {
+	return (b - a)*t + a;
+    }
+
+    function drawTree(tree, timeFraction) {
 	var index = selectedNodes.findIndex(
 	    function(elem, i, a){
 		return elem.key == tree.key;
 	    });
 	gl.objectColor = (index >= 0) ? selectedColor : normalColor;
-	digit.drawNumber(tree.x, tree.y, textHeight, tree.key);
-	circle.draw(tree.x, tree.y, nodeRadius);
+	var x = (timeFraction === undefined) ? tree.x : lerp(timeFraction, tree.oldx, tree.x);
+	var y = (timeFraction === undefined) ? tree.y : lerp(timeFraction, tree.oldy, tree.y);
+	digit.drawNumber(x, y, textHeight, tree.key);
+	circle.draw(x, y, nodeRadius);
 	if (tree.left != null) {
 	    gl.objectColor = normalColor;
-	    edge(tree.x, tree.y, tree.left.x, tree.left.y);
-	    drawTree(tree.left);
+	    var leftx = (timeFraction === undefined) ? tree.left.x : lerp(timeFraction, tree.left.oldx, tree.left.x);
+	    var lefty = (timeFraction === undefined) ? tree.left.y : lerp(timeFraction, tree.left.oldy, tree.left.y);
+	    edge(x, y, leftx, lefty);
+	    drawTree(tree.left, timeFraction);
 	}
 	if (tree.right != null) {
 	    gl.objectColor = normalColor;
-	    edge(tree.x, tree.y, tree.right.x, tree.right.y);
-	    drawTree(tree.right);
+	    var rightx = (timeFraction === undefined) ? tree.right.x : lerp(timeFraction, tree.right.oldx, tree.right.x);
+	    var righty = (timeFraction === undefined) ? tree.right.y : lerp(timeFraction, tree.right.oldy, tree.right.y);
+	    edge(x, y, rightx, righty);
+	    drawTree(tree.right, timeFraction);
 	}
     }
 
@@ -363,7 +376,7 @@ var bstView = (function() {
 	return findNode(tree.right, pt);
     }
 
-    function display() {
+    function display(timeStamp) {
 	frame = 0;  // clear pending animation frame request
 	
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -376,6 +389,15 @@ var bstView = (function() {
 	    var dy = treeExtent.maxy - treeExtent.miny + 2*boundary;
 	    if (dx < 16) dx = 16;
 	    if (dy < 4) dy = 4;
+	    if (animating) {
+		oldViewrect = {};
+		oldViewrect.width = viewrect.width;
+		oldViewrect.height = viewrect.height;
+		oldViewrect.x0 = viewrect.x0;
+		oldViewrect.y0 = viewrect.y0;
+		oldViewrect.x1 = viewrect.x1;
+		oldViewrect.y1 = viewrect.y1;
+	    }
 	    viewrect.width = dx;
 	    viewrect.height = dx/aspect;
 	    if (viewrect.height < dy) {
@@ -389,14 +411,42 @@ var bstView = (function() {
 	    //
 	    // Origin in upper left. Positive y-axis points downward.
 	    //
-	    gl.Projection.identity().ortho(viewrect.x0, viewrect.x1,
-					   viewrect.y1, viewrect.y0,
-					   -1, 1);
-	    gl.ModelView.identity();
+	    if (!animating) {
+		gl.Projection.identity().ortho(viewrect.x0, viewrect.x1,
+					       viewrect.y1, viewrect.y0,
+					       -1, 1);
+		gl.ModelView.identity();
+	    }
 	}
 	
 	gl.objectColor = [1, 1, 0];
-	drawTree(tree);
+
+	if (animating) {
+	    if (!animationStart)
+		animationStart = timeStamp;
+	    var animationFraction = (timeStamp - animationStart)/animationLength;
+	    if (animationFraction < 1) {
+		gl.Projection.identity().ortho(lerp(animationFraction, oldViewrect.x0, viewrect.x0), 
+					       lerp(animationFraction, oldViewrect.x1, viewrect.x1),
+					       lerp(animationFraction, oldViewrect.y1, viewrect.y1),
+					       lerp(animationFraction, oldViewrect.y0, viewrect.y0),
+					       -1, 1);
+		gl.ModelView.identity();
+		drawTree(tree, animationFraction);
+		if (frame == 0)
+		    frame = requestAnimationFrame(display);
+	    } else {  // done animating
+		animating = false;
+		animationStart = null;
+		gl.Projection.identity().ortho(viewrect.x0, viewrect.x1,
+					       viewrect.y1, viewrect.y0,
+					       -1, 1);
+		gl.ModelView.identity();
+		drawTree(tree);
+	    }
+	} else {
+	    drawTree(tree);
+	}
 	
 	gl.flush();
     }

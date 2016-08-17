@@ -1,8 +1,9 @@
 function Tree(key) {
     this.key = key;
     this.left = this.right = null;
-    this.x = this.y = 0.0;
+    this.x = this.y = 0.0;  // current position
     this.dx = 0.0;
+    this.oldx = this.oldy = 0; // previous position (for animation)
 }
 
 function insert(tree, key) {
@@ -130,11 +131,17 @@ function setNodePositions(tree) {
 	}
     }
 
-    function zeroCoords(tree) { // XXX
+    //
+    // Save old node coords (i.e. copy x,y to oldx, oldy) and
+    // zero coords (x, y) which are about to be update.
+    //
+    function saveAndZeroCoords(tree) {
 	if (tree) {
+	    tree.oldx = tree.x;  
+	    tree.oldy = tree.y;
 	    tree.x = tree.y = tree.dx = 0;
-	    zeroCoords(tree.left);
-	    zeroCoords(tree.right);
+	    saveAndZeroCoords(tree.left);
+	    saveAndZeroCoords(tree.right);
 	}
     }
 
@@ -151,8 +158,7 @@ function setNodePositions(tree) {
 	}
     }
 
-    zeroCoords(tree);
-
+    saveAndZeroCoords(tree);
     childOffsets(tree);
     var extent = {minx : 0, maxx : 1, miny : 0, maxy : height(tree)};
     assignCoordinates(tree, 0, 0, extent);
