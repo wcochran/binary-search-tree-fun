@@ -108,6 +108,15 @@ var bstView = (function() {
 	}
     }
 
+    function mouseOut(event) {
+	if (draggingNode) {
+	    draggingNode.x = draggingNodeOriginalPosition.x;
+	    draggingNode.y = draggingNodeOriginalPosition.y;
+	    draggingNode = false;
+	    if (frame == 0) frame = requestAnimationFrame(display);
+	}
+    }
+
     function mouseUp(event) {
 	if (draggingNode) {
 	    var pos = getMousePos(canvas, event);
@@ -175,6 +184,7 @@ var bstView = (function() {
 
 	canvas.addEventListener("mousedown", mouseDown, false);
 	canvas.addEventListener("mousemove", mouseMove, false);
+	canvas.addEventListener("mouseout", mouseOut, false);
 	document.body.addEventListener("mouseup", mouseUp, false);
 
 	var vertexShaderSource = 
