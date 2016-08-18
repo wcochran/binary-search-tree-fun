@@ -326,6 +326,7 @@ var bstView = (function() {
     var nodeRadius = 0.35;
     var textHeight = 0.18;
     var boundary = 0.7;
+    var footer = 1.4;  // room for controls at bottom of canvas
 
     function edge(x0,y0, x1,y1) {
 	var dx = x1 - x0, dy = y1 - y0;
@@ -456,7 +457,7 @@ var bstView = (function() {
 	    treeModified = false;
 	    aspect = canvas.width / canvas.height;
 	    var dx = treeExtent.maxx - treeExtent.minx + 2*boundary;
-	    var dy = treeExtent.maxy - treeExtent.miny + 2*boundary;
+	    var dy = treeExtent.maxy - treeExtent.miny + 2*boundary + footer;
 	    if (dx < 16) dx = 16;
 	    if (dy < 4) dy = 4;
 	    if (animating) {
