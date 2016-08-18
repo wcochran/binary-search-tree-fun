@@ -171,6 +171,22 @@ var bstView = (function() {
 	*/
     }
 
+    function touchStart(event) {
+	console.log("touchStart");
+    }
+
+    function touchMove(event) {
+	console.log("touchMove");
+    }
+
+    function touchEnd(event) {
+	console.log("touchEnd");
+    }
+
+    function touchCancel(event) {
+	console.log("touchCancel");
+    }
+
     my.init = function(canvas_) {
         canvas = canvas_;
 	gl = null;
@@ -185,7 +201,12 @@ var bstView = (function() {
 	canvas.addEventListener("mousedown", mouseDown, false);
 	canvas.addEventListener("mousemove", mouseMove, false);
 	canvas.addEventListener("mouseout", mouseOut, false);
-	document.body.addEventListener("mouseup", mouseUp, false);
+	canvas.addEventListener("mouseup", mouseUp, false);
+
+	canvas.addEventListener("touchstart", touchStart, false);
+	canvas.addEventListener("touchmove", touchMove, false);
+	canvas.addEventListener("touchend", touchEnd, false);
+	canvas.addEventListener("touchcancel", touchCancel, false);
 
 	var vertexShaderSource = 
 	    'attribute vec3 vertexPosition; \
