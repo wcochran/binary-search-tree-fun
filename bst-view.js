@@ -43,8 +43,48 @@ var bstView = (function() {
     var dragginfNodeOriginalPostion;
 
     function mouseDown(event) {
+	if (animating)
+	    return;
+
 	// console.log("event.detail : " + event.detail); // XXX  for double click
 	var pos = getMousePos(canvas, event);
+
+	if (keySelector.didTapForward(pos)) {
+	    keySelector.key = (keySelector.key + 1) % 100;
+	    if (frame == 0) frame = requestAnimationFrame(display);
+            return;
+	}
+
+	if (keySelector.didTapFastForward(pos)) {
+	    keySelector.key = (keySelector.key + 10) % 100;
+	    if (frame == 0) frame = requestAnimationFrame(display);
+            return;
+	}
+
+	if (keySelector.didTapReverse(pos)) {
+	    keySelector.key = (keySelector.key -1 + 100) % 100;
+	    if (frame == 0) frame = requestAnimationFrame(display);
+            return;
+	}
+
+	if (keySelector.didTapFastReverse(pos)) {
+	    keySelector.key = (keySelector.key - 10 + 100) % 100;
+	    if (frame == 0) frame = requestAnimationFrame(display);
+            return;
+	}
+
+	if (keySelector.didTapKey(pos)) {
+            var key = keySelector.key;
+	    if (!find(tree, key)) {
+		tree = insert(tree, key);
+		animating = true;
+		animationLength = 0.3*1000;
+		treeModified = true;
+		if (frame == 0) frame = requestAnimationFrame(display);
+	    }
+            return;
+	}
+
 	var vpos = canvasToViewRect(pos);
 	var node = findNode(tree, vpos);
 	if (node) {
@@ -412,17 +452,12 @@ var bstView = (function() {
     function KeySelector() {
 	this.key = 0;
 	this.x = this.y = 0;
-	this.radius = 20; // pixels (1:1 with canvas)
-	this.textHeight = 10;
+	this.radius = 24; // pixels (1:1 with canvas)
+	this.textHeight = 13;
 	this.forwardCenterX = 2*this.radius;
 	this.fastForwardCenterX = 4*this.radius;
 	this.reverseCenterX = -2*this.radius;
 	this.fastReverseCenterX = -4*this.radius;
-    }
-
-    KeySelector.prototype.setPosition = function(x, y) {
-	this.x = x;
-	this.y = y;
     }
 
     KeySelector.prototype.draw = function() {
@@ -430,25 +465,81 @@ var bstView = (function() {
 	gl.matrixStack.push(gl.ModelView);
 	gl.matrixStack.push(gl.Projection);
 	gl.Projection.identity().ortho(0, canvas.width,
-				       0, canvas.height,
+				       canvas.height, 0,
 				       -1, 1);
 	gl.ModelView.identity();
 	var x = canvas.width/2;
-	var y = this.radius + 5;
+	var y = canvas.height - (this.radius + 5);
+	this.x = x;
+	this.y = y;
+	if (!find(tree, this.key))
+	    gl.objectColor = [0, 1, 0];
+	else
+	    gl.objectColor = [0.4, 0.4, 0.4];
 	digit.drawNumber(x, y, this.textHeight, this.key);
+	gl.objectColor = [0, 1, 0];
 	circle.draw(x, y, this.radius);
-	var s = 0.6;
+	var s = 0.7;
 	var r = s*this.radius;
 	rightPointer.draw(x + this.forwardCenterX, y, r, r);
+	var d = 0.5*r;
+	rightPointer.draw(x + this.fastForwardCenterX - d, y, r, r);
+	rightPointer.draw(x + this.fastForwardCenterX + d, y, r, r);
 	rightPointer.draw(x + this.reverseCenterX, y, -r, r); // flip : -x
+	rightPointer.draw(x + this.fastReverseCenterX - d, y, -r, r);
+	rightPointer.draw(x + this.fastReverseCenterX + d, y, -r, r);
 	gl.matrixStack.pop(gl.Projection);
 	gl.matrixStack.pop(gl.ModelView);
     }
 
+    KeySelector.prototype.didTapKey = function(pos) {
+	var dx = pos.x - this.x;
+	var dy = pos.y - this.y;
+	return dx*dx + dy*dy <= this.radius*this.radius;
+    }
+
+    KeySelector.prototype.didTapForward = function(pos) {
+	var dx = pos.x - (this.x + this.forwardCenterX);
+	var dy = pos.y - this.y;
+	return dx*dx + dy*dy <= this.radius*this.radius;
+    }
+
+    KeySelector.prototype.didTapFastForward = function(pos) {
+	var dx = pos.x - (this.x + this.fastForwardCenterX);
+	var dy = pos.y - this.y;
+	return dx*dx + dy*dy <= this.radius*this.radius;
+    }
+
+    KeySelector.prototype.didTapReverse = function(pos) {
+	var dx = pos.x - (this.x + this.reverseCenterX);
+	var dy = pos.y - this.y;
+	return dx*dx + dy*dy <= this.radius*this.radius;
+    }
+
+    KeySelector.prototype.didTapFastReverse = function(pos) {
+	var dx = pos.x - (this.x + this.fastReverseCenterX);
+	var dy = pos.y - this.y;
+	return dx*dx + dy*dy <= this.radius*this.radius;
+    }
+
     var keySelector = new KeySelector();
+
+    function resizeCanvasIfNeeded() {
+	var displayWidth  = canvas.clientWidth;
+	var displayHeight = canvas.clientHeight;
+	if (canvas.width  != displayWidth ||
+	    canvas.height != displayHeight) {
+	    canvas.width  = displayWidth;
+	    canvas.height = displayHeight;
+	    gl.viewport(0, 0, canvas.width, canvas.height);
+	    treeModified = true;
+	}
+    }
 
     function display(timeStamp) {
 	frame = 0;  // clear pending animation frame request
+
+	resizeCanvasIfNeeded();
 	
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	

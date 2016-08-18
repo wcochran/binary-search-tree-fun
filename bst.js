@@ -16,7 +16,17 @@ function insert(tree, key) {
 	    tree.right = insert(tree.right, key);
     }
     return tree;
-}    
+} 
+
+function find(tree, key) {
+    if (tree === null)
+	return false;
+    if (tree.key === key)
+	return true;
+    if (key < tree.key)
+	return find(tree.left, key);
+    return find(tree.right, key);
+}
 
 function rotR(t) {
     var r = t.left;

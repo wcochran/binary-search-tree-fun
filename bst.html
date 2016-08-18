@@ -6,18 +6,22 @@
 
 <title>BST</title>
 
+<!--
+http://webglfundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
+-->
+
 <style>
-body {
-  background-color : gray;
-  font-family: "Arial Rounded MT Bold", "Helvetica Rounded", Arial, sans-serif;
-}
-h1 {
-  font-size : 1.2em;
-}
-footer {
-  font-size : 0.9 em;
-  font-style: italic;
-}
+  body {
+    border: 0;
+    margin: 0;
+    overflow: hidden;
+    background-color : gray;
+  }
+  canvas {
+    width: 100vw;
+    height: 100vh;
+    display: block;
+  }
 </style>
 
 <script src="bst.js"></script>
@@ -45,6 +49,13 @@ footer {
 
 	bstView.setTree(tree);
         bstView.display();
+
+        window.addEventListener('resize', resizeCanvas, false);
+
+        function resizeCanvas() {
+           bstView.display();
+        }
+
      } else {
        alert("Failed to initialize WebGL app.");
      }
@@ -54,18 +65,7 @@ footer {
 </head>
 <body onload="go()">
 
-<!-- <h1>BST</h1> -->
-
-<canvas id="bstcanvas" width="1000" height="600"></canvas><br />
-
-<!--
-<label for="key">New Key : </label><input id="key" type="number" value="0"/><br />
--->
-
-<footer>
-  Wayne O. Cochran<br />
-  August 16, 2016
-</footer>
+<canvas id="bstcanvas"></canvas>
 
 </body>
 </html>
