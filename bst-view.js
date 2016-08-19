@@ -1,3 +1,8 @@
+//
+// CHeck out the following for debugging under iOS on OS X Safari.
+// http://apple.stackexchange.com/questions/162051/why-doesnt-mobile-safari-have-a-javascript-console
+//
+
 var bstView = (function() {
     var my = {};       // returned object holding module methods
 
@@ -42,13 +47,7 @@ var bstView = (function() {
     var draggingNode = null;
     var dragginfNodeOriginalPostion;
 
-    function mouseDown(event) {
-	if (animating)
-	    return;
-
-	// console.log("event.detail : " + event.detail); // XXX  for double click
-	var pos = getMousePos(canvas, event);
-
+    function handleMouseOrTouchDown(pos) {
 	if (keySelector.didTapForward(pos)) {
 	    keySelector.key = (keySelector.key + 1) % 100;
 	    if (frame == 0) frame = requestAnimationFrame(display);
@@ -96,15 +95,76 @@ var bstView = (function() {
         }
     }
 
+    function handleMouseOrTouchMove(pos) {
+	var vpos = canvasToViewRect(pos);
+	draggingNode.x = vpos.x;
+	draggingNode.y = vpos.y;
+	if (frame == 0) {
+	    frame = requestAnimationFrame(display);
+	}
+    }
+
+    function handleMouseOrTouchUp(pos) {
+	var vpos = canvasToViewRect(pos);
+	var parentNode = findNode(tree, vpos);
+
+	var rotated = false;
+	if (parentNode) {
+	    if (parentNode.left === draggingNode) {
+		tree = rotateRight(tree, parentNode);
+		rotated = true;
+	    } else if (parentNode.right === draggingNode) {
+		tree = rotateLeft(tree, parentNode);
+		rotated = true;
+	    }
+	}
+	
+	if (rotated) {
+	    animating = true;
+	    animationLength = 0.3*1000;
+	    treeModified = true;
+	} else {
+	    // later : animate node back to original position
+	    draggingNode.x = draggingNodeOriginalPosition.x;
+	    draggingNode.y = draggingNodeOriginalPosition.y;
+	}
+	if (frame == 0) {
+	    frame = requestAnimationFrame(display);
+	}
+	draggingNode = null;
+	return;
+	/* XXXX selecting a node
+	   var pos = getMousePos(canvas, event);
+	   var vpos = canvasToViewRect(pos);
+	   var node = findNode(tree, vpos);
+	   if (node) {
+	   var index = selectedNodes.findIndex(
+	   function(elem, i, a){
+	   return elem.key == node.key;
+	   });
+	   if (index >= 0) {
+	   selectedNodes.splice(index, 1);
+	   } else {
+	   selectedNodes.push(node);
+	   }
+	   if (frame == 0) {
+	   frame = requestAnimationFrame(display);
+	   }
+	   }
+	*/
+    }
+    
+    function mouseDown(event) {
+	if (animating)
+	    return;
+	var pos = getMousePos(canvas, event);
+	handleMouseOrTouchDown(pos);
+    }
+
     function mouseMove(event) {
 	if (draggingNode) {
 	    var pos = getMousePos(canvas, event);
-	    var vpos = canvasToViewRect(pos);
-	    draggingNode.x = vpos.x;
-	    draggingNode.y = vpos.y;
-	    if (frame == 0) {
-		frame = requestAnimationFrame(display);
-	    }
+	    handleMouseOrTouchMove(pos);
 	}
     }
 
@@ -120,71 +180,53 @@ var bstView = (function() {
     function mouseUp(event) {
 	if (draggingNode) {
 	    var pos = getMousePos(canvas, event);
-	    var vpos = canvasToViewRect(pos);
-	    var parentNode = findNode(tree, vpos);
-
-	    var rotated = false;
-	    if (parentNode) {
-		if (parentNode.left === draggingNode) {
-		    tree = rotateRight(tree, parentNode);
-		    rotated = true;
-		} else if (parentNode.right === draggingNode) {
-		    tree = rotateLeft(tree, parentNode);
-		    rotated = true;
-		}
-	    }
-	    
-	    if (rotated) {
-		animating = true;
-		animationLength = 0.3*1000;
-		treeModified = true;
-	    } else {
-		// later : animate node back to original position
-		draggingNode.x = draggingNodeOriginalPosition.x;
-		draggingNode.y = draggingNodeOriginalPosition.y;
-	    }
-	    if (frame == 0) {
-		frame = requestAnimationFrame(display);
-	    }
-	    draggingNode = null;
-	    return;
+	    handleMouseOrTouchUp(pos);
 	}
+    }
 
-	/* XXXX selecting a node
-	var pos = getMousePos(canvas, event);
-	var vpos = canvasToViewRect(pos);
-	var node = findNode(tree, vpos);
-	if (node) {
-	    var index = selectedNodes.findIndex(
-		function(elem, i, a){
-		    return elem.key == node.key;
-		});
-	    if (index >= 0) {
-		selectedNodes.splice(index, 1);
-	    } else {
-		selectedNodes.push(node);
-	    }
-	    if (frame == 0) {
-		frame = requestAnimationFrame(display);
-	    }
-	}
-	*/
+    function getTouchPos(canvas, touch) {
+	var rect = canvas.getBoundingClientRect();
+	return {
+            x: touch.clientX - rect.left,
+            y: touch.clientY - rect.top
+	};
     }
 
     function touchStart(event) {
-	console.log("touchStart");
+	event.preventDefault();
+	if (animating)
+	    return;
+	var touch = event.changedTouches[0];
+	var pos = getTouchPos(canvas, touch);
+	handleMouseOrTouchDown(pos);
     }
 
     function touchMove(event) {
-	console.log("touchMove");
+	event.preventDefault();
+	if (draggingNode) {
+	    var touch = event.changedTouches[0];
+	    var pos = getTouchPos(canvas, touch);
+	    handleMouseOrTouchMove(pos);
+	}
     }
 
     function touchEnd(event) {
-	console.log("touchEnd");
+	event.preventDefault();
+	if (draggingNode) {
+	    var touch = event.changedTouches[0];
+	    var pos = getTouchPos(canvas, touch);
+	    handleMouseOrTouchUp(pos);
+	}
     }
 
     function touchCancel(event) {
-	console.log("touchCancel");
+	event.preventDefault();
+	if (draggingNode) {
+	    draggingNode.x = draggingNodeOriginalPosition.x;
+	    draggingNode.y = draggingNodeOriginalPosition.y;
+	    draggingNode = false;
+	    if (frame == 0) frame = requestAnimationFrame(display);
+	}
     }
 
     my.init = function(canvas_) {
