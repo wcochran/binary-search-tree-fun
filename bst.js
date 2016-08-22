@@ -28,6 +28,36 @@ function find(tree, key) {
     return find(tree.right, key);
 }
 
+function remove(tree, key) {
+    if (tree != null) {
+	if (key === tree.key) {
+	    if (tree.left === null)
+		tree = tree.right;
+	    else if (tree.right === null)
+		tree = tree.left;
+	    else {
+		var nodeWithKey = new Tree(0);
+		tree.right = removeMin(tree.right, nodeWithKey);
+		tree.key = nodeWithKey.key;
+	    }
+	}  else if (key < tree.key) {
+	    tree.left = remove(tree.left, key);
+	} else {
+	    tree.right = remove(tree.right, key);
+	}
+    }
+    return tree;
+}
+
+function removeMin(tree, nodeWithKey) {
+    if (tree.left === null) {
+	nodeWithKey.key = tree.key;
+	return tree.right;
+    }
+    tree.left = removeMin(tree.left, nodeWithKey);
+    return tree;
+}
+
 function rotR(t) {
     var r = t.left;
     t.left = r.right;
