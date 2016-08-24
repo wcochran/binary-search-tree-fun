@@ -1,16 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" manifest="bst.appcache">
 <head>
 
 <meta charset="utf=8" />
 
 <title>BST</title>
 
+<link rel="apple-touch-icon" href="bst-icon.png"/>
+<link rel="apple-touch-icon" sizes="76x76" href="bst-icon-76x76.png"/>
+<link rel="apple-touch-icon" sizes="120x120" href="bst-icon-120x120.png"/>
+<link rel="apple-touch-icon" sizes="152x152" href="bst-icon-152x152.png"/>
+<link rel="apple-touch-icon" sizes="167x167" href="bst-icon-167x167.png"/>
+<link rel="apple-touch-icon" sizes="180x180" href="bst-icon-180x180.png"/>
+
 <!--
 http://blog.initlabs.com/post/81716286465/how-to-display-websites-in-fullscreen-mode-in-ios7
 -->
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, minimal-ui">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 
 <!--
@@ -42,14 +49,18 @@ http://webglfundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
      if (success) {
         var size = 40;
 	var keys = [];
-	for (var i = 0; i < size; i++)
-	    keys.push(i);
+	for (var i = 0; i < size; i++) {
+            var key = Math.floor(Math.random()*100);
+	    keys.push(key);
+	}
+        /* XXX
 	for (var i = 0; i < keys.length; i++) {
 	    var j = Math.floor(Math.random()*keys.length);
 	    var tmp = keys[i];
 	    keys[i] = keys[j];
 	    keys[j] = tmp;
 	}
+        */
         var tree = null;
 	for (var i = 0; i < keys.length; i++)
         tree = insert(tree, keys[i]);

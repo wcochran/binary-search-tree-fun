@@ -12,7 +12,7 @@ function insert(tree, key) {
     } else {
 	if (key < tree.key)
 	    tree.left = insert(tree.left, key);
-	else
+	else if (key > tree.key)
 	    tree.right = insert(tree.right, key);
     }
     return tree;

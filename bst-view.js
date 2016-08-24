@@ -26,8 +26,8 @@ var bstView = (function() {
     function getMousePos(canvas, event) {
 	var rect = canvas.getBoundingClientRect();
 	return {
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top
+            x: event.clientX*devPixelRatio - rect.left,
+            y: event.clientY*devPixelRatio - rect.top
 	};
     }
 
@@ -138,25 +138,6 @@ var bstView = (function() {
 	}
 	draggingNode = null;
 	return;
-	/* XXXX selecting a node
-	   var pos = getMousePos(canvas, event);
-	   var vpos = canvasToViewRect(pos);
-	   var node = findNode(tree, vpos);
-	   if (node) {
-	   var index = selectedNodes.findIndex(
-	   function(elem, i, a){
-	   return elem.key == node.key;
-	   });
-	   if (index >= 0) {
-	   selectedNodes.splice(index, 1);
-	   } else {
-	   selectedNodes.push(node);
-	   }
-	   if (frame == 0) {
-	   frame = requestAnimationFrame(display);
-	   }
-	   }
-	*/
     }
     
     function mouseDown(event) {
@@ -192,8 +173,8 @@ var bstView = (function() {
     function getTouchPos(canvas, touch) {
 	var rect = canvas.getBoundingClientRect();
 	return {
-            x: touch.clientX - rect.left,
-            y: touch.clientY - rect.top
+            x: touch.clientX*devPixelRatio - rect.left,
+            y: touch.clientY*devPixelRatio - rect.top
 	};
     }
 
@@ -295,8 +276,8 @@ var bstView = (function() {
 							    "ModelViewProjection");
 	program.objectColor = gl.getUniformLocation(program, "objectColor");
 	
-	gl.clearColor(0,0,0.3,1);
-	gl.uniform3fv(program.objectColor,[1.0, 1.0, 0.0]);
+	gl.clearColor(0,0,0,1);
+	gl.uniform3fv(program.objectColor,[1.0, 1.0, 1.0]);
 
 	gl.matrixStack = new Matrix4x4Stack;      
 	gl.Projection = new Matrix4x4;
@@ -454,32 +435,27 @@ var bstView = (function() {
 			 x1 - nodeRadius*u, y1 - nodeRadius*v);
     }
 
-    var selectedColor = [1, 0, 0];
-    var normalColor = [1, 1, 0];
+    var nodeColor = [1, 1, 1];
 
     function lerp(t, a, b) {
 	return (b - a)*t + a;
     }
 
     function drawTree(tree, timeFraction) {
-	var index = selectedNodes.findIndex(
-	    function(elem, i, a){
-		return elem.key == tree.key;
-	    });
-	gl.objectColor = (index >= 0) ? selectedColor : normalColor;
+	gl.objectColor = nodeColor;
 	var x = (timeFraction === undefined) ? tree.x : lerp(timeFraction, tree.oldx, tree.x);
 	var y = (timeFraction === undefined) ? tree.y : lerp(timeFraction, tree.oldy, tree.y);
 	digit.drawNumber(x, y, textHeight, tree.key);
 	circle.draw(x, y, nodeRadius);
 	if (tree.left != null) {
-	    gl.objectColor = normalColor;
+	    gl.objectColor = nodeColor;
 	    var leftx = (timeFraction === undefined) ? tree.left.x : lerp(timeFraction, tree.left.oldx, tree.left.x);
 	    var lefty = (timeFraction === undefined) ? tree.left.y : lerp(timeFraction, tree.left.oldy, tree.left.y);
 	    edge(x, y, leftx, lefty);
 	    drawTree(tree.left, timeFraction);
 	}
 	if (tree.right != null) {
-	    gl.objectColor = normalColor;
+	    gl.objectColor = nodeColor;
 	    var rightx = (timeFraction === undefined) ? tree.right.x : lerp(timeFraction, tree.right.oldx, tree.right.x);
 	    var righty = (timeFraction === undefined) ? tree.right.y : lerp(timeFraction, tree.right.oldy, tree.right.y);
 	    edge(x, y, rightx, righty);
@@ -521,7 +497,6 @@ var bstView = (function() {
             gl.enableVertexAttribArray(program.vertexPosition);
             gl.vertexAttribPointer(program.vertexPosition,
                                    2, gl.FLOAT, false, 0, 0);
-            // XXX gl.drawArrays(gl.LINE_LOOP, 0, 3);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
 	    gl.matrixStack.pop(gl.ModelView);
 	}
@@ -530,8 +505,12 @@ var bstView = (function() {
     function KeySelector() {
 	this.key = 0;
 	this.x = this.y = 0;
-	this.radius = 24; // pixels (1:1 with canvas)
+	this.radius = 24*devPixelRatio; // pixels (1:1 with canvas)
+	this.textHeight = 13*devPixelRatio;
+	/* XXX
+	this.radius = 24;
 	this.textHeight = 13;
+	*/
 	this.forwardCenterX = 2*this.radius;
 	this.fastForwardCenterX = 4*this.radius;
 	this.reverseCenterX = -2*this.radius;
@@ -539,7 +518,7 @@ var bstView = (function() {
     }
 
     KeySelector.prototype.draw = function() {
-	gl.objectColor = normalColor;
+	gl.objectColor = nodeColor;
 	gl.matrixStack.push(gl.ModelView);
 	gl.matrixStack.push(gl.Projection);
 	gl.Projection.identity().ortho(0, canvas.width,
@@ -551,11 +530,11 @@ var bstView = (function() {
 	this.x = x;
 	this.y = y;
 	if (!find(tree, this.key))
-	    gl.objectColor = [0, 1, 0];
+	    gl.objectColor = [1, 1, 1];
 	else
 	    gl.objectColor = [0.4, 0.4, 0.4];
 	digit.drawNumber(x, y, this.textHeight, this.key);
-	gl.objectColor = [0, 1, 0];
+	gl.objectColor = [1, 1, 1];
 	circle.draw(x, y, this.radius);
 	var s = 0.7;
 	var r = s*this.radius;
@@ -600,7 +579,7 @@ var bstView = (function() {
 	return dx*dx + dy*dy <= this.radius*this.radius;
     }
 
-    var keySelector = new KeySelector();
+    var keySelector; // created on first display call
 
     function resizeCanvasIfNeeded() {
 	devPixelRatio = window.devicePixelRatio || 1;
@@ -619,7 +598,10 @@ var bstView = (function() {
 	frame = 0;  // clear pending animation frame request
 
 	resizeCanvasIfNeeded();
-	
+
+	if (!keySelector)
+	    keySelector = new KeySelector();
+
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	
 	if (treeModified) {
@@ -661,7 +643,7 @@ var bstView = (function() {
 	    }
 	}
 	
-	gl.objectColor = [1, 1, 0];
+	gl.objectColor = [1, 1, 1];
 
 	if (animating) {
 	    if (!animationStart)

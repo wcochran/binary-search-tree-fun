@@ -1,0 +1,11 @@
+CACHE MANIFEST
+# 2016-08-24 : version 1.2
+
+NETWORK:
+*
+
+CACHE:
+bst.html
+bst.js
+bst-view.js
+matrix.js
