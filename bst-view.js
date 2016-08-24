@@ -598,8 +598,9 @@ var bstView = (function() {
     var keySelector = new KeySelector();
 
     function resizeCanvasIfNeeded() {
-	var displayWidth  = canvas.clientWidth;
-	var displayHeight = canvas.clientHeight;
+	var devPixelRatio = window.devicePixelRatio || 1;
+	var displayWidth  = Math.floor(canvas.clientWidth * devPixelRatio);
+	var displayHeight = Math.floor(canvas.clientHeight * devPixelRatio);
 	if (canvas.width  != displayWidth ||
 	    canvas.height != displayHeight) {
 	    canvas.width  = displayWidth;
