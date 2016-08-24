@@ -13,6 +13,7 @@ var bstView = (function() {
     var gl;
     var program;
 
+    var devPixelRatio;   // set in resizeCanvasIfNeeded
     var viewrect = {};   // 2D viewable region (set lazily in display())
     var oldViewrect = null;  // old viewable region (for animation)
     var selectedNodes = [];
@@ -31,16 +32,20 @@ var bstView = (function() {
     }
 
     function canvasToViewRect(pt) {
+	var displayWidth  = Math.floor(canvas.clientWidth * devPixelRatio);
+	var displayHeight = Math.floor(canvas.clientHeight * devPixelRatio);
 	return {
-	    x: pt.x*viewrect.width/canvas.width + viewrect.x0,
-	    y: pt.y*viewrect.height/canvas.height + viewrect.y0
+	    x: pt.x*viewrect.width/displayWidth + viewrect.x0,
+	    y: pt.y*viewrect.height/displayHeight + viewrect.y0
 	};
     }
 
     function viewRectToCanvas(pt) {
+	var displayWidth  = Math.floor(canvas.clientWidth * devPixelRatio);
+	var displayHeight = Math.floor(canvas.clientHeight * devPixelRatio);
 	return {
-	    x : (pt.x - viewrect.x0)/canvas.width/viewrect.width,
-	    y : (pt.y - viewrect.y0)/canvas.height/viewrect.height
+	    x : (pt.x - viewrect.x0)/displayWidth/viewrect.width,
+	    y : (pt.y - viewrect.y0)/displayHeight/viewrect.height
 	};
     }
 
@@ -598,7 +603,7 @@ var bstView = (function() {
     var keySelector = new KeySelector();
 
     function resizeCanvasIfNeeded() {
-	var devPixelRatio = window.devicePixelRatio || 1;
+	devPixelRatio = window.devicePixelRatio || 1;
 	var displayWidth  = Math.floor(canvas.clientWidth * devPixelRatio);
 	var displayHeight = Math.floor(canvas.clientHeight * devPixelRatio);
 	if (canvas.width  != displayWidth ||
