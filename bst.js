@@ -39,6 +39,8 @@ function remove(tree, key) {
 		var nodeWithKey = new Tree(0);
 		tree.right = removeMin(tree.right, nodeWithKey);
 		tree.key = nodeWithKey.key;
+		tree.x = nodeWithKey.x;
+		tree.y = nodeWithKey.y;
 	    }
 	}  else if (key < tree.key) {
 	    tree.left = remove(tree.left, key);
@@ -52,6 +54,8 @@ function remove(tree, key) {
 function removeMin(tree, nodeWithKey) {
     if (tree.left === null) {
 	nodeWithKey.key = tree.key;
+	nodeWithKey.x = tree.x;
+	nodeWithKey.y = tree.y;
 	return tree.right;
     }
     tree.left = removeMin(tree.left, nodeWithKey);

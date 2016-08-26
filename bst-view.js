@@ -50,7 +50,7 @@ var bstView = (function() {
     }
 
     var draggingNode = null;
-    var dragginfNodeOriginalPostion;
+    var draggingNodeOriginalPostion;
 
     function handleMouseOrTouchDown(pos) {
 	if (keySelector.didTapForward(pos)) {
@@ -109,6 +109,8 @@ var bstView = (function() {
 	}
     }
 
+    var dwindlingNode = null;
+
     function handleMouseOrTouchUp(pos) {
 	var vpos = canvasToViewRect(pos);
 	var parentNode = findNode(tree, vpos);
@@ -123,10 +125,22 @@ var bstView = (function() {
 		rotated = true;
 	    }
 	}
+
+	var deleted = false;
+	if (!rotated) {
+	    var dy = vpos.y - draggingNodeOriginalPosition.y;
+	    if (dy > 4*nodeRadius) {
+		dwindlingNode = new Tree(draggingNode.key);
+		dwindlingNode.x = draggingNode.x;
+		dwindlingNode.y = draggingNode.y;
+		tree = remove(tree, draggingNode.key);
+		deleted = true;
+	    }
+	}
 	
-	if (rotated) {
+	if (rotated || deleted) {
 	    animating = true;
-	    animationLength = 0.3*1000;
+	    animationLength = 0.4*1000; // XXX 0.3*1000;
 	    treeModified = true;
 	} else {
 	    // later : animate node back to original position
@@ -658,11 +672,19 @@ var bstView = (function() {
 		gl.ModelView.identity();
 		drawTree(tree, animationFraction);
 		keySelector.draw();
+		if (dwindlingNode) {
+		    digit.drawNumber(dwindlingNode.x, dwindlingNode.y, 
+				     lerp(animationFraction, textHeight, 0),
+				     dwindlingNode.key);
+		    circle.draw(dwindlingNode.x, dwindlingNode.y, 
+				lerp(animationFraction,nodeRadius,0));
+		}
 		if (frame == 0)
 		    frame = requestAnimationFrame(display);
 	    } else {  // done animating
 		animating = false;
 		animationStart = null;
+		dwindlingNode = null;
 		drawTree(tree);
 		keySelector.draw();
 	    }
