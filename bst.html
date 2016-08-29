@@ -43,40 +43,64 @@ http://webglfundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
 <script src="bst-view.js"></script>
 <script src="debug/webgl-debug.js"></script>
 <script>
+    // http://stackoverflow.com/questions/979975/how-to-get-the-value-from-the-get-parameters
+    var QueryString = function () {
+        // This function is anonymous, is executed immediately and 
+        // the return value is assigned to QueryString!
+        var query_string = {};
+        var query = window.location.search.substring(1);
+        var vars = query.split("&");
+        for (var i=0;i<vars.length;i++) {
+            var pair = vars[i].split("=");
+            // If first entry with this name
+            if (typeof query_string[pair[0]] === "undefined") {
+                query_string[pair[0]] = decodeURIComponent(pair[1]);
+                // If second entry with this name
+            } else if (typeof query_string[pair[0]] === "string") {
+                var arr = [ query_string[pair[0]],decodeURIComponent(pair[1]) ];
+                query_string[pair[0]] = arr;
+                // If third or later entry with this name
+            } else {
+                query_string[pair[0]].push(decodeURIComponent(pair[1]));
+            }
+        } 
+        return query_string;
+    }();
+
   function go() {
-     var canvas = document.getElementById("bstcanvas");
-     var success = bstView.init(canvas);
-     if (success) {
-        var size = 40;
-	var keys = [];
-	for (var i = 0; i < size; i++) {
-            var key = Math.floor(Math.random()*100);
-	    keys.push(key);
-	}
-        /* XXX
-	for (var i = 0; i < keys.length; i++) {
-	    var j = Math.floor(Math.random()*keys.length);
-	    var tmp = keys[i];
-	    keys[i] = keys[j];
-	    keys[j] = tmp;
-	}
-        */
-        var tree = null;
-	for (var i = 0; i < keys.length; i++)
-        tree = insert(tree, keys[i]);
-
-	bstView.setTree(tree);
-        bstView.display();
-
-        window.addEventListener('resize', resizeCanvas, false);
-
-        function resizeCanvas() {
-           bstView.display();
-        }
-
-     } else {
-       alert("Failed to initialize WebGL app.");
-     }
+      var canvas = document.getElementById("bstcanvas");
+      var success = bstView.init(canvas);
+      if (success) {
+          var keys = [];
+          if (QueryString.node) {
+              // http://stackoverflow.com/questions/767486/how-do-you-check-if-a-variable-is-an-array-in-javascript
+              if (QueryString.node.constructor === Array)
+                  keys = QueryString.node.map(function(x) { return parseInt(x, 10); });
+              else
+                  keys = [parseInt(QueryString.node)]; // one node
+          } else {
+             var size = QueryString.N || 40;
+             for (var i = 0; i < size; i++) {
+                 var key = Math.floor(Math.random()*100);
+                 keys.push(key);
+             }
+          }
+          var tree = null;
+          for (var i = 0; i < keys.length; i++)
+              tree = insert(tree, keys[i]);
+          
+          bstView.setTree(tree);
+          bstView.display();
+          
+          window.addEventListener('resize', resizeCanvas, false);
+          
+          function resizeCanvas() {
+              bstView.display();
+          }
+          
+      } else {
+          alert("Failed to initialize WebGL app.");
+      }
   }
 </script>
 
