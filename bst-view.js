@@ -290,15 +290,15 @@ var bstView = (function() {
                                                             "ModelViewProjection");
         program.objectColor = gl.getUniformLocation(program, "objectColor");
         
-        gl.clearColor(0,0,0,1);
-        gl.uniform3fv(program.objectColor,[1.0, 1.0, 1.0]);
+        gl.clearColor(1,1,1,1);
+        gl.uniform3fv(program.objectColor,[0.0, 0.0, 0.0]);
 
         gl.matrixStack = new Matrix4x4Stack;      
         gl.Projection = new Matrix4x4;
         gl.ModelView = new Matrix4x4;
         
         gl.enable(gl.DEPTH_TEST);
-        gl.lineWidth(2.0);
+        gl.lineWidth(4.0);
 
         gl.viewport(0,0, canvas.width, canvas.height);
 
@@ -449,7 +449,7 @@ var bstView = (function() {
                          x1 - nodeRadius*u, y1 - nodeRadius*v);
     }
 
-    var nodeColor = [1, 1, 1];
+    var nodeColor = [0, 0, 0];
 
     function lerp(t, a, b) {
         return (b - a)*t + a;
@@ -545,11 +545,11 @@ var bstView = (function() {
         this.x = x;
         this.y = y;
         if (!find(tree, this.key))
-            gl.objectColor = [1, 1, 1];
+            gl.objectColor = [0,0,0];
         else
             gl.objectColor = [0.4, 0.4, 0.4];
         digit.drawNumber(x, y, this.textHeight, this.key);
-        gl.objectColor = [1, 1, 1];
+        gl.objectColor = [0, 0, 0];
         circle.draw(x, y, this.radius);
         var s = 0.7;
         var r = s*this.radius;
